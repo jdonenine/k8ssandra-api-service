@@ -1,0 +1,74 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: k8ssandra-api-service-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: ["cassandra.datastax.com"]
+    resources: ["cassandradatacenters"]
+    verbs: ["get", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: k8ssandra-api-service-role-binding
+subjects:
+  - kind: Group
+    name: system:serviceaccounts
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: k8ssandra-api-service-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: k8ssandra-api-service-account
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8ssandra-api-service-account
+  namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: k8ssandra-api-service-config
+data:
+   userSecretName: k8ssandra-cassandra-cluster-superuser
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8ssandra-api-service
+  namespace: default
+  labels:
+    app: k8ssandra-api-service
+spec:
+  serviceAccountName: k8ssandra-api-service-account
+  containers:
+  - name: k8ssandra-api-service
+    image: jeffdinoto/k8ssandra-api-service
+    env:
+    - name: K8SSANDRA_API_SERIVCE_USER_SERCRET_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: k8ssandra-api-service-config
+          key: userSecretName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8ssandra-api-service-service
+  namespace: default
+spec:
+  selector:
+    app: k8ssandra-api-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
