@@ -1,0 +1,38 @@
+cassandra:
+  clusterName: k8ssandra-cassandra-cluster
+  version: 3.11.10
+  heap:
+   size: 500M
+   newGenSize: 256M
+  datacenters:
+  - name: dc1
+    size: 3
+kube-prometheus-stack:
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      externalUrl: http://localhost:9090/prometheus
+      routePrefix: /prometheus
+    ingress:
+      enabled: false
+      paths:
+        - /prometheus
+  grafana:
+    enabled: true
+    ingress:
+      enabled: false
+      path: /grafana
+    grafana.ini:
+      server:
+        root_url: http://localhost:3000/grafana
+        serve_from_sub_path: true
+stargate:
+  enabled: true
+  replicas: 2
+  ingress:
+    enabled: false
+reaper:
+  enabled: true
+  ingress:
+    enabled: false
+    host: repair.127.0.0.1.nip.io
