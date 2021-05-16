@@ -87,7 +87,7 @@ func (controller *CassandraDatacentersController) GetCassDcs(w http.ResponseWrit
 	}
 
 	// Parse the response from the k8s API
-	cassDcs := models.CassandraDatacenters{}
+	cassDcs := models.CassandraDatacentersWrapper{}
 	parseErr := json.Unmarshal([]byte(rawCassdcs), &cassDcs)
 	if parseErr != nil {
 		log.Printf("Unable to parse retrieved CassandraDataCenter resource response from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, parseErr)
@@ -96,10 +96,10 @@ func (controller *CassandraDatacentersController) GetCassDcs(w http.ResponseWrit
 	}
 
 	// Build the response object
-	responseMetadata := models.ResponseMetadata{Total: len(cassDcs.Items), Count: len(cassDcs.Items)}
+	responseMetadata := models.WrapperMetadata{Total: int32(len(cassDcs.Items)), Count: int32(len(cassDcs.Items))}
 	response := struct {
 		Items    []models.CassandraDatacenter `json:"items"`
-		Metadata models.ResponseMetadata      `json:"metadata"`
+		Metadata models.WrapperMetadata       `json:"metadata"`
 	}{
 		cassDcs.Items,
 		responseMetadata,

@@ -1,0 +1,167 @@
+openapi: 3.0.0
+info:
+  title: K8ssandra Cluster API
+  description: A RESTful service providing control and visibility into a K8ssandra cluster.
+  version: 0.1.0
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: '/v1'
+paths:
+  /auth/token:
+    get:
+      tags:
+        - Auth
+      summary: Retrieve an auth token.
+      description: Auth tokens are required for access to many APIs, authenticate with this API to retrieve a new token.
+      operationId: getToken
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MTgzODI2MzEsImlzcyI6Ims4c3NhbmRyYS1hcGktc2VydmljZSIsInN1YiI6Ims4c3NhbmRyYS1jYXNzYW5kcmEtY2x1c3Rlci1zdXBlcnVzZXIifQ.DOP8C3xRxjC5QAcB3D24c4pZOjBnE4OmPWI1F9mp6Lg
+        '401':
+          description: Authentication information is missing or invalid.
+        '5XX':
+          description: Unexpected error.
+  /cassandra-datacenters/:
+    get:
+      tags:
+        - Cassandra Datacenters
+      summary: Get Cassandra Datacenters.
+      operationId: getCassandraDatacenters
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CassandraDatacentersWrapper'
+  /cassandra-datacenters/{name}:
+    get:
+      tags:
+        - Cassandra Datacenters
+      summary: Get a Cassandra Datacenter by name.
+      operationId: getCassandraDatacenterByName
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          description: CassandraDatacenter Name
+          required: true
+          schema:
+            type: string
+            example: dc1
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CassandraDatacenter'
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CassandraDatacentersWrapper:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/WrapperMetadata'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CassandraDatacenter'
+    WrapperMetadata:
+      type: object
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
+    CassandraDatacenter:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ResourceMetadata'
+        status:
+          $ref: '#/components/schemas/CassandraDatacenterStatus'
+        spec:
+          $ref: '#/components/schemas/CassandraDatacenterSpec'
+    CassandraDatacenterSpec:
+      type: object
+      properties:
+        clusterName:
+          type: string
+        size:
+          type: integer
+        serverImage:
+          type: string
+        serverType:
+          type: string
+        serverVersion:
+          type: string
+        dockerImageRunsAsCassandra:
+          type: boolean
+    CassandraDatacenterStatus:
+      type: object
+      properties:
+        cassandraOperatorProgress:
+          type: string
+        lastServerNodeStarted:
+          type: string
+          format: date-time
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatusCondition'
+    ResourceMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        generation:
+          type: integer
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+    StatusCondition:
+      type: object
+      properties:
+        lastTransitionTime:
+          type: string
+          format: date-time
+        message:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+        type:
+          type: string

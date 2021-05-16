@@ -16,3 +16,4 @@
 
 .kubeconfig
 k8ssandra-api-service
+__debug_bin

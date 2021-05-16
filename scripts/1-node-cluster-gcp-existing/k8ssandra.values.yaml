@@ -1,0 +1,17 @@
+cassandra:
+  clusterName: k8ssandra-cassandra-cluster
+  version: "3.11.10"
+  cassandraLibDirVolume:
+    storageClass: standard-rwo
+    size: 1024Gi
+  heap:
+   size: 1000M
+   newGenSize: 500M
+  datacenters:
+  - name: dc1
+    size: 1
+stargate:
+  enabled: true
+  replicas: 1
+medusa:
+  enabled: false
