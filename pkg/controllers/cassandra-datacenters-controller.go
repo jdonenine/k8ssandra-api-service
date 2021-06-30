@@ -1,14 +1,14 @@
 package controllers
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/jdonenine/k8ssandra-api-service/pkg/models"
+	"github.com/jdonenine/k8ssandra-api-service/pkg/resources"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -36,24 +36,22 @@ func (controller *CassandraDatacentersController) GetCassDc(w http.ResponseWrite
 		return
 	}
 
-	// Query the k8s API for the CassandraDataCenter resource in the given namespace
-	resourcePath := fmt.Sprintf("/apis/cassandra.datastax.com/v1beta1/namespaces/%s/cassandradatacenters/%s", controller.KubeNamespace, cassDcName)
-	rawCassDc, err := controller.Kubeclient.RESTClient().
-		Get().
-		AbsPath(resourcePath).
-		DoRaw(context.TODO())
-	if err != nil {
-		log.Printf("Unable to retrieve CassandraDataCenter resource with name '%s' from namesapce '%s', failed with error: '%s'", cassDcName, controller.KubeNamespace, err)
+	resourceManager := resources.ResourceManager{Kubeclient: controller.Kubeclient, KubeNamespace: controller.KubeNamespace}
+	cassDc, getCassDcErr := resourceManager.GetCassDc(cassDcName)
+	if getCassDcErr != nil {
+		if errors.IsNotFound(getCassDcErr) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		log.Printf("Unable to retrieve CassandraDataCenter resource with name '%s' from namesapce '%s', failed with error: '%s'", cassDcName, controller.KubeNamespace, getCassDcErr)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// Parse the response from the k8s API
-	cassDc := models.CassandraDatacenter{}
-	parseErr := json.Unmarshal([]byte(rawCassDc), &cassDc)
-	if parseErr != nil {
-		log.Printf("Unable to parse retrieved CassandraDataCenter resource with name '%s' response from namesapce '%s', failed with error: '%s'", cassDcName, controller.KubeNamespace, parseErr)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	// Only return the resource if it's managed by k8ssandra
+	appName := cassDc.ObjectMeta.Labels["app.kubernetes.io/name"]
+	if appName != "k8ssandra" {
+		http.Error(w, "The resource requested is not managed by K8ssandra", http.StatusUnauthorized)
 		return
 	}
 
@@ -61,7 +59,7 @@ func (controller *CassandraDatacentersController) GetCassDc(w http.ResponseWrite
 	w.Header().Set("Content-Type", "application/json")
 	encodeErr := json.NewEncoder(w).Encode(cassDc)
 	if encodeErr != nil {
-		log.Printf("Unable to encode response for listing of cassDc resource with name '%s' from namesapce '%s', failed with error: '%s'", cassDcName, controller.KubeNamespace, encodeErr)
+		log.Printf("Unable to write response for listing of cassDc resource with name '%s' from namesapce '%s', failed with error: '%s'", cassDcName, controller.KubeNamespace, encodeErr)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -74,42 +72,29 @@ func (controller *CassandraDatacentersController) GetCassDcs(w http.ResponseWrit
 		return
 	}
 
-	// Query the k8s API for all of the CassandraDataCenter resources in the given namespace
-	resourcePath := fmt.Sprintf("/apis/cassandra.datastax.com/v1beta1/namespaces/%s/cassandradatacenters/", controller.KubeNamespace)
-	rawCassdcs, err := controller.Kubeclient.RESTClient().
-		Get().
-		AbsPath(resourcePath).
-		DoRaw(context.TODO())
-	if err != nil {
-		log.Printf("Unable to retrieve CassandraDataCenter resources from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, err)
+	resourceManager := resources.ResourceManager{Kubeclient: controller.Kubeclient, KubeNamespace: controller.KubeNamespace}
+	cassDcs, getCassDcsErr := resourceManager.GetCassDcs()
+	if getCassDcsErr != nil {
+		log.Printf("Unable to retrieve CassandraDatacenterList resource from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, getCassDcsErr)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// Parse the response from the k8s API
-	cassDcs := models.CassandraDatacentersWrapper{}
-	parseErr := json.Unmarshal([]byte(rawCassdcs), &cassDcs)
-	if parseErr != nil {
-		log.Printf("Unable to parse retrieved CassandraDataCenter resource response from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, parseErr)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+	// Filter down to only the resources owned by the specified cassdc
+	filteredItems := []models.CassandraDatacenter{}
+	for _, cassDc := range cassDcs.Items {
+		appName := cassDc.ObjectMeta.Labels["app.kubernetes.io/name"]
+		if appName == "k8ssandra" {
+			filteredItems = append(filteredItems, cassDc)
+		}
 	}
-
-	// Build the response object
-	responseMetadata := models.WrapperMetadata{Total: int32(len(cassDcs.Items)), Count: int32(len(cassDcs.Items))}
-	response := struct {
-		Items    []models.CassandraDatacenter `json:"items"`
-		Metadata models.WrapperMetadata       `json:"metadata"`
-	}{
-		cassDcs.Items,
-		responseMetadata,
-	}
+	cassDcs.Items = filteredItems
 
 	// Send the response
 	w.Header().Set("Content-Type", "application/json")
-	encodeErr := json.NewEncoder(w).Encode(response)
+	encodeErr := json.NewEncoder(w).Encode(cassDcs)
 	if encodeErr != nil {
-		log.Printf("Unable to encode response for listing of cassDc resources from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, encodeErr)
+		log.Printf("Unable to write response for listing of CassandraDatacenterList resources from namesapce '%s', failed with error: '%s'", controller.KubeNamespace, encodeErr)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

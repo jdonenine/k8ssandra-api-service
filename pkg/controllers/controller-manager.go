@@ -43,6 +43,9 @@ func (manager *ControllerManager) registerRoutes() {
 	manager.Router.HandleFunc("/v1/cassandra-datacenters", manager.AuthManager.WithAuthentication(http.HandlerFunc(cassandraDatacentersController.GetCassDcs))).Methods("GET")
 	manager.Router.HandleFunc("/v1/cassandra-datacenters/{name}", manager.AuthManager.WithAuthentication(http.HandlerFunc(cassandraDatacentersController.GetCassDc))).Methods("GET")
 
+	statefulSetsController := StatefulSetsController{Kubeclient: manager.Kubeclient, KubeNamespace: manager.KubeNamespace}
+	manager.Router.HandleFunc("/v1/cassandra-datacenters/{name}/stateful-sets", manager.AuthManager.WithAuthentication(http.HandlerFunc(statefulSetsController.GetCassDcStatefulSets))).Methods("GET")
+
 	manager.Router.NotFoundHandler = http.HandlerFunc(manager.notFound)
 }
 

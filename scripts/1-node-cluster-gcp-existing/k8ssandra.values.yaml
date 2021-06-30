@@ -1,5 +1,5 @@
 cassandra:
-  clusterName: k8ssandra-cassandra-cluster
+  clusterName: k8ssandra-cluster
   version: "3.11.10"
   cassandraLibDirVolume:
     storageClass: standard-rwo

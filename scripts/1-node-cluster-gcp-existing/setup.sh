@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-helm uninstall k8ssandra
+helm uninstall k8ssandra-release
 
 ## Cluster environment bootstrapping
 
@@ -14,7 +14,7 @@ helm repo add k8ssandra-stable https://helm.k8ssandra.io/stable
 
 helm repo update
 
-helm install k8ssandra k8ssandra-stable/k8ssandra -f k8ssandra.values.yaml
+helm install k8ssandra-release k8ssandra-stable/k8ssandra -f k8ssandra.values.yaml
 
 echo "Deploying k8ssandra complete."
 

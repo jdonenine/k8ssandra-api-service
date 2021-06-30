@@ -33,7 +33,7 @@ paths:
   /cassandra-datacenters/:
     get:
       tags:
-        - Cassandra Datacenters
+        - CassandraDatacenters
       summary: Get Cassandra Datacenters.
       operationId: getCassandraDatacenters
       security:
@@ -44,17 +44,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CassandraDatacentersWrapper'
-  /cassandra-datacenters/{name}:
+                $ref: '#/components/schemas/ResourceList'
+  /cassandra-datacenters/{cassdc-name}:
     get:
       tags:
-        - Cassandra Datacenters
+        - CassandraDatacenters
       summary: Get a Cassandra Datacenter by name.
       operationId: getCassandraDatacenterByName
       security:
         - bearerAuth: []
       parameters:
-        - name: name
+        - name: cassdc-name
           in: path
           description: CassandraDatacenter Name
           required: true
@@ -67,7 +67,59 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CassandraDatacenter'
+                $ref: '#/components/schemas/Resource'
+        '404':
+          description: CassandraDatacenter Not Found
+  /cassandra-datacenters/{cassdc-name}/statefulsets:
+    get:
+      tags:
+        - CassandraDatacenters
+      summary: Get all StatefulSets deployed on behalf of a given Cassandra Datacenter.
+      operationId: getCassandraDatacenterStatefulSets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cassdc-name
+          in: path
+          description: CassandraDatacenter Name
+          required: true
+          schema:
+            type: string
+            example: dc1
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+        '404':
+          description: CassandraDatacenter Not Found
+  /stateful-sets/{ss-name}:
+    get:
+      tags:
+        - StatefulSets
+      summary: Get a StatefulSets by name.
+      operationId: getStatefulSetByName
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ss-name
+          in: path
+          description: StatefulSet Name
+          required: true
+          schema:
+            type: string
+            example: dc1
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '404':
+          description: StatefulSet Not Found
 components:
   securitySchemes:
     basicAuth:
@@ -78,6 +130,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    WrapperMetadata:
+      type: object
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
     CassandraDatacentersWrapper:
       type: object
       properties:
@@ -87,13 +146,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CassandraDatacenter'
-    WrapperMetadata:
-      type: object
-      properties:
-        total:
-          type: integer
-        count:
-          type: integer
     CassandraDatacenter:
       type: object
       properties:
@@ -107,6 +159,26 @@ components:
           $ref: '#/components/schemas/CassandraDatacenterStatus'
         spec:
           $ref: '#/components/schemas/CassandraDatacenterSpec'
+    StatefulSetsWrapper:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/WrapperMetadata'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatefulSet'
+    StatefulSet:
+      type: object
+      properties:
+        name:
+          type: string
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ResourceMetadata'
     CassandraDatacenterSpec:
       type: object
       properties:
@@ -134,12 +206,58 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StatusCondition'
+    ResourceOwnerReference:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        name:
+          type: string
+        uid:
+          type: string
+    Resource:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          type: object
+        status:
+          type: object
+    ResourceList:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        items:
+          type: array
+          items:
+            $ref:  '#/components/schemas/Resource'
+        metadata:
+          type: object
+          properties:
+            selfLink:
+              type: string
+            resourceVersion:
+              type: integer
+              format: int64
+        
     ResourceMetadata:
       type: object
       properties:
         name:
           type: string
         namespace:
+          type: string
+        selfLink:
           type: string
         generation:
           type: integer
@@ -151,6 +269,10 @@ components:
           type: object
           additionalProperties:
             type: string
+        ownerReferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceOwnerReference'
     StatusCondition:
       type: object
       properties:

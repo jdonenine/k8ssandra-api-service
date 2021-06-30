@@ -8,6 +8,7 @@ require (
 	github.com/shaj13/go-guardian v1.5.11
 	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
 )
